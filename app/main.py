@@ -1,10 +1,6 @@
-import sys
-sys.path.append('/Users/mateuszj/Documents/Data Science Projects/MerckApp/venv/lib/python3.11/site-packages')
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
 from fastapi.responses import JSONResponse
-import os
-os.environ['VIRTUAL_ENV'] = '/Users/mateuszj/Documents/Data Science Projects/MerckApp/venv'
 import rdkit.Chem as Chem
 import rdkit.Chem.AllChem as AllChem
 import rdchiral
