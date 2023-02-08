@@ -5,7 +5,7 @@ Let's begin by installing any and all requirements using docker
 cd app
 docker build . -f Dockerfile.txt
 ```
-Paste this into your terminal to load up the 
+Paste this into your terminal to load up the microservice
 ```bash
 uvicorn main:app --reload 
 ```
