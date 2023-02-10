@@ -3,14 +3,11 @@ import rdkit.Chem as Chem
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from rdchiral.main import rdchiralRunText
-
-
 from models import ReactionRequest, ReactionResponse
 from validators import validate_reactants, validate_reaction
 
 
 app = FastAPI(title="Run SMILES through reaction SMARTS")
-
 
 
 
