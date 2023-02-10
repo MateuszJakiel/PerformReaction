@@ -1,5 +1,0 @@
-{
-  "reaction": "[c:8]-[c:6]>>[c:8][I:55].[B:99][c:6]",
-  "reactants": ["XYZ"],
-  "threshold": 50
-}

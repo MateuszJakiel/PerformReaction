@@ -1,85 +1,58 @@
-from fastapi import FastAPI, Request
-from pydantic import BaseModel
-from fastapi.responses import JSONResponse
+import logging
 import rdkit.Chem as Chem
-import rdkit.Chem.AllChem as AllChem
-import rdchiral
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, JSONResponse
 from rdchiral.main import rdchiralRunText
-from typing import List
-from itertools import chain
-import pandas as pd
+
+
+from models import ReactionRequest, ReactionResponse
+from validators import validate_reactants, validate_reaction
 
 
 app = FastAPI(title="Run SMILES through reaction SMARTS")
 
 
-class ReactionHandler(BaseModel):
-    reaction: str
-    reactants: List[str]
-    threshold: int
 
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 def home():
-    """Documentation link"""
-    return "The documentation can be found at http://127.0.0.1:8000/docs"
+   return '<h1>PerformReaction API</h1>\n<a href="docs">[Documentation link]</a>'
 
 
-@app.exception_handler(ValueError)
-async def errors(request: Request, exc: ValueError):
-    return JSONResponse(
-        status_code=400,
-        content={"message": str(exc)},
-    )
 
 
 @app.post("/PerformReaction/")
-def perform_reaction(data: ReactionHandler):
-    reactants = data.reactants
-    reaction = data.reaction
-    thresh = data.threshold
-    mols = [Chem.MolFromSmiles(smile) for smile in reactants]
+def perform_reaction(data: ReactionRequest) -> ReactionResponse:
+   mols = validate_reactants(data.reactants)
+   rxn = validate_reaction(data.reaction)
 
-    for molecule in mols:
-        if molecule is None:
-            raise ValueError('Invalid SMILES')
 
-    rxn = AllChem.ReactionFromSmarts(reaction)
-    if not rxn:
-        raise ValueError('Invalid SMARTS')
+   # Run reactants (rdkit)
+   rdkit_products = {tuple(sorted([Chem.MolToSmiles(mol) for mol in mols]))
+                     for mols in rxn.RunReactants(mols, maxProducts=data.threshold)}
 
-    products = pd.DataFrame()
-    products['reactants'] = reactants
-    products['rdkit_products'] = [rxn.RunReactants((mol, ), maxProducts=thresh) for mol in mols]
 
-    all_products = []
-    for index, row in products.iterrows():
-        all_products.append(list(chain.from_iterable(products['rdkit_products'].loc[index])))
+   # Run reactants (rdchiral)
+   try:
+       if len(data.reactants) == 1:
+           rdchiral_products = rdchiralRunText(data.reaction, data.reactants[0])[0].split('.')
+       else:
+           logging.error(f'rdchiral error: more than 1 reactant')
+           rdchiral_products = []
+   except Exception as e:
+       logging.error(f'rdchiral error: {e}')
+       rdchiral_products = []
 
-    smiles = []
-    for index, row in enumerate(all_products):
-        molecules = all_products[index]
-        smi = [Chem.MolToSmiles(mol) for mol in molecules]
-        if smi not in smiles:
-            smiles.append(smi)
 
-    unique = []
-    result = []
-    for i in smiles:
-        temp = []
-        for x in i:
-            if x not in unique:
-                unique.append(x)
-                temp.append(x)
-        result.append(temp)
+   return ReactionResponse(reaction=data.reaction, reactants=data.reactants,
+                           rdkit_products=rdkit_products, rdchiral_products=rdchiral_products)
 
-    products['rdkit_productSMILES'] = result
 
-    try:
-        products['rdchiral_productSMILES'] = [rdchiral.main.rdchiralRunText(reaction, mol) for mol in reactants]
-    except Exception as e:
-        print("Error occurred while performing rdchiralRunText: {}".format(str(e)))
 
-    products = products.drop(columns='rdkit_products')
 
-    return products.to_json()
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError):
+   return JSONResponse(
+       status_code=400,
+       content={"message": str(exc)},
+   )

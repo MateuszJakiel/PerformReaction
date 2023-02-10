@@ -1,8 +1,0 @@
-pydantic
-typing
-pandas
-rdkit
-fastapi
-uvicorn
-python-multipart
-rdchiral

@@ -1,5 +1,0 @@
-{
-  "reaction": "XYZ>>XYZ",
-  "reactants": ["CC1=CC=C(C=C1)C1=CC(=CC=C1C)C1=CC(C)=CC(C)=C1"],
-  "threshold": 50
-}
